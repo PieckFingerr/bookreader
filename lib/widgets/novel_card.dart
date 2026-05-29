@@ -74,57 +74,64 @@ class NovelCard extends StatelessWidget {
                 ),
               ],
             ),
-            // Info
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    novel.title,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    novel.author,
-                    style: GoogleFonts.nunito(
-                      fontSize: 11,
-                      color: AppTheme.textSecondary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, size: 13, color: AppTheme.starColor),
-                      const SizedBox(width: 2),
-                      Text(
-                        novel.rating.toStringAsFixed(1),
-                        style: GoogleFonts.nunito(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const Spacer(),
-                      if (chapterCount != null)
+            // Info — dùng Expanded để chiếm phần còn lại, tránh overflow
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          '$chapterCount ch.',
+                          novel.title,
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          novel.author,
                           style: GoogleFonts.nunito(
                             fontSize: 11,
                             color: AppTheme.textSecondary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 13, color: AppTheme.starColor),
+                        const SizedBox(width: 2),
+                        Text(
+                          novel.rating.toStringAsFixed(1),
+                          style: GoogleFonts.nunito(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (chapterCount != null)
+                          Text(
+                            '$chapterCount ch.',
+                            style: GoogleFonts.nunito(
+                              fontSize: 11,
+                              color: AppTheme.textSecondary,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

@@ -77,57 +77,68 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 if (novels.isLoading)
                   const Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 else if (chapter != null)
-                  SingleChildScrollView(
+                  // SliverFillRemaining ép content luôn chiếm tối thiểu full màn hình
+                  // → footer Positioned luôn ở dưới cùng dù content ngắn
+                  CustomScrollView(
                     controller: _scrollCtrl,
-                    padding: const EdgeInsets.fromLTRB(24, 100, 24, 120),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          chapter.title,
-                          style: GoogleFonts.playfairDisplay(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Container(height: 1, color: AppTheme.divider),
-                        const SizedBox(height: 24),
-                        Text(
-                          chapter.content,
-                          style: GoogleFonts.merriweather(
-                            fontSize: _fontSize,
-                            color: AppTheme.textPrimary,
-                            height: 2.0,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        // Navigation at bottom
-                        Row(
-                          children: [
-                            if (prev != null)
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: () => _goToChapter(prev.id!),
-                                  icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                                  label: const Text('Trước'),
+                    slivers: [
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 100, 24, 120),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                chapter.title,
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary,
                                 ),
                               ),
-                            if (prev != null && next != null)
-                              const SizedBox(width: 12),
-                            if (next != null)
-                              Expanded(
-                                child: ElevatedButton.icon(
-                                  onPressed: () => _goToChapter(next.id!),
-                                  icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                                  label: const Text('Tiếp theo'),
+                              const SizedBox(height: 20),
+                              Container(height: 1, color: AppTheme.divider),
+                              const SizedBox(height: 24),
+                              Text(
+                                chapter.content,
+                                style: GoogleFonts.merriweather(
+                                  fontSize: _fontSize,
+                                  color: AppTheme.textPrimary,
+                                  height: 2.0,
                                 ),
                               ),
-                          ],
+                              // Spacer đẩy navigation buttons xuống cuối
+                              // khi content ngắn hơn màn hình
+                              const Spacer(),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  if (prev != null)
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _goToChapter(prev.id!),
+                                        icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                                        label: const Text('Trước'),
+                                      ),
+                                    ),
+                                  if (prev != null && next != null)
+                                    const SizedBox(width: 12),
+                                  if (next != null)
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        onPressed: () => _goToChapter(next.id!),
+                                        icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                                        label: const Text('Tiếp theo'),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
 
                 // Top bar
@@ -177,7 +188,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
                 ),
 
-                // Bottom nav
+                // Bottom nav — Positioned nên luôn cố định ở dưới màn hình
                 Positioned(
                   bottom: 0,
                   left: 0,

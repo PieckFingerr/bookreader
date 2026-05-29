@@ -216,7 +216,7 @@ class DiscoverTab extends StatelessWidget {
                     sliver: SliverGrid(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        childAspectRatio: 0.52,
+                        childAspectRatio: 0.45,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
                       ),
