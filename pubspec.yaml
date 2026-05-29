@@ -1,0 +1,22 @@
+name: bookreader
+description: "A new Flutter project."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  google_fonts: ^8.1.0
+  provider: ^6.1.5+1
+  sqflite: ^2.4.2+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
