@@ -12,6 +12,8 @@ class NovelModel {
   final int ratingCount;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int? createdBy;
+  
 
   NovelModel({
     this.id,
@@ -26,6 +28,7 @@ class NovelModel {
     this.ratingCount = 0,
     required this.createdAt,
     required this.updatedAt,
+    this.createdBy,
   });
 
   Map<String, dynamic> toMap() => {
@@ -39,6 +42,7 @@ class NovelModel {
         'view_count': viewCount,
         'rating': rating,
         'rating_count': ratingCount,
+        'created_by': createdBy,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt.toIso8601String(),
       };
@@ -49,6 +53,7 @@ class NovelModel {
         author: map['author'],
         description: map['description'],
         coverUrl: map['cover_url'],
+        createdBy: map['created_by'] as int?,
         genres: (map['genres'] as String).split(',').where((g) => g.isNotEmpty).toList(),
         status: map['status'],
         viewCount: map['view_count'] ?? 0,
@@ -70,7 +75,7 @@ class NovelModel {
     double? rating,
     int? ratingCount,
     DateTime? createdAt,
-    DateTime? updatedAt,
+    DateTime? updatedAt, int? createdBy,
   }) =>
       NovelModel(
         id: id ?? this.id,
@@ -85,6 +90,7 @@ class NovelModel {
         ratingCount: ratingCount ?? this.ratingCount,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        createdBy: createdBy ?? this.createdBy,
       );
 
   String get statusLabel {

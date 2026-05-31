@@ -1,4 +1,5 @@
 // lib/screens/home/profile_tab.dart
+import 'package:bookreader/screens/home/my_novels_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -164,6 +165,17 @@ class ProfileTab extends StatelessWidget {
                         MaterialPageRoute(builder: (_) => const AdminScreen()),
                       ),
                     ),
+                  _MenuItem(
+  icon: Icons.edit_note_rounded,
+  label: 'Truyện của tôi',
+  color: AppTheme.primary,
+  onTap: () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => MyNovelsScreen(userId: user.id!),
+    ),
+  ),
+),
                 ],
               ),
               const SizedBox(height: 12),

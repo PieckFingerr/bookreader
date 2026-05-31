@@ -26,7 +26,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDb,
       onUpgrade: _onUpgrade,
     );
@@ -66,7 +66,9 @@ class DatabaseService {
         rating REAL DEFAULT 0.0,
         rating_count INTEGER DEFAULT 0,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULL,
+        created_by INTEGER,
+        FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL
       )
     ''');
 
@@ -147,6 +149,11 @@ class DatabaseService {
           FOREIGN KEY (novel_id) REFERENCES novels (id) ON DELETE CASCADE
         )
       ''');
+    }
+    if (oldVersion < 4) {
+      await db.execute(
+        'ALTER TABLE novels ADD COLUMN created_by INTEGER'
+      );
     }
   }
 
@@ -390,9 +397,23 @@ Bước chân anh dứt khoát hơn. Quyết tâm hơn. Và cuộc hành trình 
     return NovelModel.fromMap(result.first);
   }
 
-  Future<int> insertNovel(NovelModel novel) async {
+  Future<int> insertNovel(NovelModel novel, {int? createdBy}) async {
     final db = await database;
-    return db.insert('novels', novel.toMap()..remove('id'));
+    final map = novel.toMap()..remove('id');
+    if (createdBy != null) map['created_by'] = createdBy;
+    return db.insert('novels', map);
+  }
+
+  // getNovelsByUser: lấy truyện do user tạo
+  Future<List<NovelModel>> getNovelsByUser(int userId) async {
+    final db = await database;
+    final result = await db.query(
+      'novels',
+      where: 'created_by = ?',
+      whereArgs: [userId],
+      orderBy: 'updated_at DESC',
+    );
+    return result.map((e) => NovelModel.fromMap(e)).toList();
   }
 
   Future<int> updateNovel(NovelModel novel) async {

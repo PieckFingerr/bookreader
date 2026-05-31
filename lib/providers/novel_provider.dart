@@ -9,6 +9,8 @@ class NovelProvider extends ChangeNotifier {
 
   List<NovelModel> _novels = [];
   List<NovelModel> _filteredNovels = [];
+  List<NovelModel> _myNovels = [];
+  List<NovelModel> get myNovels => _myNovels;
   NovelModel? _selectedNovel;
   List<ChapterModel> _chapters = [];
   ChapterModel? _currentChapter;
@@ -18,7 +20,11 @@ class NovelProvider extends ChangeNotifier {
   String _selectedGenre = '';
   String _selectedStatus = '';
 
-  List<NovelModel> get novels => _filteredNovels.isEmpty && _searchQuery.isEmpty && _selectedGenre.isEmpty && _selectedStatus.isEmpty
+  List<NovelModel> get novels =>
+      _filteredNovels.isEmpty &&
+          _searchQuery.isEmpty &&
+          _selectedGenre.isEmpty &&
+          _selectedStatus.isEmpty
       ? _novels
       : _filteredNovels;
   List<NovelModel> get allNovels => _novels;
@@ -62,15 +68,20 @@ class NovelProvider extends ChangeNotifier {
   }
 
   void _applyFilters() {
-    if (_searchQuery.isEmpty && _selectedGenre.isEmpty && _selectedStatus.isEmpty) {
+    if (_searchQuery.isEmpty &&
+        _selectedGenre.isEmpty &&
+        _selectedStatus.isEmpty) {
       _filteredNovels = [];
     } else {
       _filteredNovels = _novels.where((n) {
-        bool matchSearch = _searchQuery.isEmpty ||
+        bool matchSearch =
+            _searchQuery.isEmpty ||
             n.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
             n.author.toLowerCase().contains(_searchQuery.toLowerCase());
-        bool matchGenre = _selectedGenre.isEmpty || n.genres.contains(_selectedGenre);
-        bool matchStatus = _selectedStatus.isEmpty || n.status == _selectedStatus;
+        bool matchGenre =
+            _selectedGenre.isEmpty || n.genres.contains(_selectedGenre);
+        bool matchStatus =
+            _selectedStatus.isEmpty || n.status == _selectedStatus;
         return matchSearch && matchGenre && matchStatus;
       }).toList();
     }
@@ -137,11 +148,12 @@ class NovelProvider extends ChangeNotifier {
   }
 
   // ADMIN OPERATIONS
-  Future<bool> addNovel(NovelModel novel) async {
+  Future<bool> addNovel(NovelModel novel, {int? createdBy}) async {
     try {
-      final id = await _db.insertNovel(novel);
-      final newNovel = novel.copyWith(id: id);
+      final id = await _db.insertNovel(novel, createdBy: createdBy);
+      final newNovel = novel.copyWith(id: id, createdBy: createdBy);
       _novels.insert(0, newNovel);
+      if (createdBy != null) _myNovels.insert(0, newNovel);
       notifyListeners();
       return true;
     } catch (e) {
@@ -218,6 +230,18 @@ class NovelProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+  }
+
+  Future<void> loadMyNovels(int userId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      _myNovels = await _db.getNovelsByUser(userId);
+    } catch (e) {
+      _error = e.toString();
+    }
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<int> getChapterCount(int novelId) => _db.getChapterCount(novelId);

@@ -207,7 +207,9 @@ class _NovelsTab extends StatelessWidget {
   void _showNovelForm(BuildContext context, NovelModel? novel) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => NovelFormScreen(novel: novel)),
+      MaterialPageRoute(
+        builder: (_) => NovelFormScreen(novel: novel, createdBy: null),
+      ),
     );
   }
 }
@@ -405,7 +407,8 @@ class _ChaptersTabState extends State<_ChaptersTab> {
 // ==================== NOVEL FORM ====================
 class NovelFormScreen extends StatefulWidget {
   final NovelModel? novel;
-  const NovelFormScreen({super.key, this.novel});
+  final int? createdBy;
+  const NovelFormScreen({super.key, this.novel, this.createdBy});
 
   @override
   State<NovelFormScreen> createState() => _NovelFormScreenState();
@@ -466,7 +469,7 @@ class _NovelFormScreenState extends State<NovelFormScreen> {
         createdAt: now,
         updatedAt: now,
       );
-      success = await provider.addNovel(novel);
+      success = await provider.addNovel(novel, createdBy: widget.createdBy);
     } else {
       final novel = widget.novel!.copyWith(
         title: _titleCtrl.text.trim(),
