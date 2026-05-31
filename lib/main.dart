@@ -48,6 +48,25 @@ class _AppRootState extends State<AppRoot> {
   void initState() {
     super.initState();
     _init();
+    // Lắng nghe auth thay đổi
+    context.read<AuthProvider>().addListener(_onAuthChanged);
+  }
+
+  @override
+  void dispose() {
+    context.read<AuthProvider>().removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+
+  void _onAuthChanged() {
+    final auth = context.read<AuthProvider>();
+    final bookmarks = context.read<BookmarkProvider>();
+    if (!auth.isLoggedIn) {
+      bookmarks.clear();  // clear khi logout
+    } else if (auth.currentUser != null) {
+      bookmarks.loadBookmarks(auth.currentUser!.id!);  // load khi login
+    }
   }
 
   Future<void> _init() async {

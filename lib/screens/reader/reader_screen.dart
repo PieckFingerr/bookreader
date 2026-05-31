@@ -1,6 +1,7 @@
 // lib/screens/reader/reader_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../providers/novel_provider.dart';
@@ -24,18 +25,68 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool _settingsOpen = false;
   final ScrollController _scrollCtrl = ScrollController();
 
+  // TTS
+  final FlutterTts _tts = FlutterTts();
+  bool _isSpeaking = false;
+  String? _selectedVoice;
+  List<Map<String, String>> _viVoices = [];
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _initTts();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await context.read<NovelProvider>().loadChapter(widget.chapterId);
       _saveProgress();
     });
   }
 
+  Future<void> _initTts() async {
+    await _tts.setLanguage('vi-VN');
+    await _tts.setSpeechRate(0.5);
+    await _tts.setPitch(1.0);
+
+    _tts.setCompletionHandler(() {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+    _tts.setCancelHandler(() {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+    _tts.setErrorHandler((msg) {
+      if (mounted) setState(() => _isSpeaking = false);
+    });
+
+    // Load danh sách giọng tiếng Việt
+    final voices = await _tts.getVoices;
+    final viVoices = (voices as List)
+        .where((v) => (v['locale'] as String? ?? '').startsWith('vi'))
+        .map((v) => {'name': v['name'] as String, 'locale': v['locale'] as String})
+        .toList();
+    if (mounted) {
+      setState(() {
+        _viVoices = viVoices;
+        if (viVoices.isNotEmpty) _selectedVoice = viVoices.first['name'];
+      });
+    }
+  }
+
+  Future<void> _toggleTts(String text) async {
+    if (_isSpeaking) {
+      await _tts.stop();
+      setState(() => _isSpeaking = false);
+    } else {
+      if (_selectedVoice != null) {
+        await _tts.setVoice({'name': _selectedVoice!, 'locale': 'vi-VN'});
+      }
+      await _tts.speak(text);
+      setState(() => _isSpeaking = true);
+    }
+  }
+
   @override
   void dispose() {
+    _tts.stop();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
     _scrollCtrl.dispose();
     super.dispose();
@@ -54,6 +105,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   Future<void> _goToChapter(int chapterId) async {
+    await _tts.stop();
+    setState(() => _isSpeaking = false);
     _scrollCtrl.jumpTo(0);
     await context.read<NovelProvider>().loadChapter(chapterId);
     _saveProgress();
@@ -77,8 +130,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 if (novels.isLoading)
                   const Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 else if (chapter != null)
-                  // SliverFillRemaining ép content luôn chiếm tối thiểu full màn hình
-                  // → footer Positioned luôn ở dưới cùng dù content ngắn
                   CustomScrollView(
                     controller: _scrollCtrl,
                     slivers: [
@@ -108,8 +159,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
                                   height: 2.0,
                                 ),
                               ),
-                              // Spacer đẩy navigation buttons xuống cuối
-                              // khi content ngắn hơn màn hình
                               const Spacer(),
                               const SizedBox(height: 16),
                               Row(
@@ -179,6 +228,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        // Nút TTS
+                        IconButton(
+                          icon: Icon(
+                            _isSpeaking
+                                ? Icons.stop_circle_rounded
+                                : Icons.record_voice_over_rounded,
+                          ),
+                          color: _isSpeaking ? AppTheme.error : AppTheme.textPrimary,
+                          onPressed: chapter != null
+                              ? () => _toggleTts(chapter.content)
+                              : null,
+                        ),
                         IconButton(
                           icon: const Icon(Icons.text_fields_rounded),
                           onPressed: () => setState(() => _settingsOpen = !_settingsOpen),
@@ -188,7 +249,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
                 ),
 
-                // Bottom nav — Positioned nên luôn cố định ở dưới màn hình
+                // Bottom nav
                 Positioned(
                   bottom: 0,
                   left: 0,
@@ -244,13 +305,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
                   ),
                 ),
 
-                // Font settings panel
+                // Settings panel (cỡ chữ + chọn giọng)
                 if (_settingsOpen)
                   Positioned(
                     top: MediaQuery.of(context).padding.top + 60,
                     right: 12,
                     child: Container(
-                      width: 220,
+                      width: 240,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppTheme.surface,
@@ -267,6 +328,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Cỡ chữ
                           Text(
                             'Cỡ chữ',
                             style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 13),
@@ -302,6 +364,54 @@ class _ReaderScreenState extends State<ReaderScreen> {
                               ),
                             ],
                           ),
+
+                          // Chọn giọng đọc
+                          if (_viVoices.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Giọng đọc',
+                              style: GoogleFonts.nunito(fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButton<String>(
+                              value: _selectedVoice,
+                              isExpanded: true,
+                              underline: Container(height: 1, color: AppTheme.divider),
+                              style: GoogleFonts.nunito(
+                                fontSize: 12,
+                                color: AppTheme.textPrimary,
+                              ),
+                              items: _viVoices
+                                  .map((v) => DropdownMenuItem(
+                                        value: v['name'],
+                                        child: Text(
+                                          v['name']!,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ))
+                                  .toList(),
+                              onChanged: (name) async {
+                                setState(() => _selectedVoice = name);
+                                await _tts.setVoice({
+                                  'name': name!,
+                                  'locale': 'vi-VN',
+                                });
+                              },
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 12),
+                            const Divider(height: 1),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Không tìm thấy giọng tiếng Việt trên thiết bị',
+                              style: GoogleFonts.nunito(
+                                fontSize: 12,
+                                color: AppTheme.textHint,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

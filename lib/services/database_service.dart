@@ -26,7 +26,7 @@ class DatabaseService {
 
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDb,
       onUpgrade: _onUpgrade,
     );
@@ -96,6 +96,19 @@ class DatabaseService {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE ratings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        novel_id INTEGER NOT NULL,
+        rating REAL NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE(user_id, novel_id),
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (novel_id) REFERENCES novels (id) ON DELETE CASCADE
+      )
+    ''');
+
     // Seed admin account
     final adminHash = _hashPassword('admin123');
     await db.insert('users', {
@@ -118,6 +131,20 @@ class DatabaseService {
           user_id INTEGER NOT NULL UNIQUE,
           created_at TEXT NOT NULL,
           FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+    if (oldVersion < 3) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS ratings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          novel_id INTEGER NOT NULL,
+          rating REAL NOT NULL,
+          created_at TEXT NOT NULL,
+          UNIQUE(user_id, novel_id),
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+          FOREIGN KEY (novel_id) REFERENCES novels (id) ON DELETE CASCADE
         )
       ''');
     }
@@ -484,5 +511,58 @@ Bước chân anh dứt khoát hơn. Quyết tâm hơn. Và cuộc hành trình 
   Future<void> removeBookmark(int userId, int novelId) async {
     final db = await database;
     await db.delete('bookmarks', where: 'user_id = ? AND novel_id = ?', whereArgs: [userId, novelId]);
+  }
+  // ==================== RATING METHODS ====================
+
+  Future<double?> getUserRating(int userId, int novelId) async {
+    final db = await database;
+    final result = await db.query(
+      'ratings',
+      where: 'user_id = ? AND novel_id = ?',
+      whereArgs: [userId, novelId],
+    );
+    if (result.isEmpty) return null;
+    return (result.first['rating'] as num).toDouble();
+  }
+
+  Future<void> upsertRating(int userId, int novelId, double rating) async {
+    final db = await database;
+    final existing = await db.query(
+      'ratings',
+      where: 'user_id = ? AND novel_id = ?',
+      whereArgs: [userId, novelId],
+    );
+    if (existing.isEmpty) {
+      await db.insert('ratings', {
+        'user_id': userId,
+        'novel_id': novelId,
+        'rating': rating,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    } else {
+      await db.update(
+        'ratings',
+        {'rating': rating},
+        where: 'user_id = ? AND novel_id = ?',
+        whereArgs: [userId, novelId],
+      );
+    }
+    // Cập nhật rating trung bình vào bảng novels
+    await _recalcNovelRating(db, novelId);
+  }
+
+  Future<void> _recalcNovelRating(Database db, int novelId) async {
+    final result = await db.rawQuery(
+      'SELECT AVG(rating) as avg, COUNT(*) as cnt FROM ratings WHERE novel_id = ?',
+      [novelId],
+    );
+    final avg = (result.first['avg'] as num?)?.toDouble() ?? 0.0;
+    final cnt = result.first['cnt'] as int;
+    await db.update(
+      'novels',
+      {'rating': avg, 'rating_count': cnt},
+      where: 'id = ?',
+      whereArgs: [novelId],
+    );
   }
 }

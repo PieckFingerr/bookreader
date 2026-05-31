@@ -38,6 +38,12 @@ class BookmarkProvider extends ChangeNotifier {
 
   bool isBookmarked(int novelId) => _bookmarkedNovelIds.contains(novelId);
 
+  void clear() {
+    _bookmarks = [];
+    _bookmarkedNovelIds = {};
+    notifyListeners();
+  }
+
   Future<void> loadBookmarks(int userId) async {
     _isLoading = true;
     notifyListeners();

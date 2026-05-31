@@ -108,7 +108,6 @@ lib/
 |---------|----------|
 | `sqflite` | SQLite local database |
 | `provider` | State management |
-| `shared_preferences` | Lưu session |
 | `google_fonts` | Font Playfair Display + Nunito |
 | `crypto` | Hash mật khẩu SHA-256 |
 | `cached_network_image` | Ảnh bìa từ URL |

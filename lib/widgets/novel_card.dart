@@ -40,7 +40,9 @@ class NovelCard extends StatelessWidget {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
                   child: AspectRatio(
                     aspectRatio: 2 / 3,
                     child: Image.network(
@@ -48,7 +50,11 @@ class NovelCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         color: AppTheme.surfaceVariant,
-                        child: const Icon(Icons.book, size: 48, color: AppTheme.textHint),
+                        child: const Icon(
+                          Icons.book,
+                          size: 48,
+                          color: AppTheme.textHint,
+                        ),
                       ),
                     ),
                   ),
@@ -57,7 +63,10 @@ class NovelCard extends StatelessWidget {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: _getStatusColor(novel.status),
                       borderRadius: BorderRadius.circular(8),
@@ -109,7 +118,11 @@ class NovelCard extends StatelessWidget {
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.star_rounded, size: 13, color: AppTheme.starColor),
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 13,
+                          color: AppTheme.starColor,
+                        ),
                         const SizedBox(width: 2),
                         Text(
                           novel.rating.toStringAsFixed(1),
@@ -142,9 +155,12 @@ class NovelCard extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'completed': return AppTheme.success;
-      case 'hiatus': return AppTheme.warning;
-      default: return AppTheme.primary;
+      case 'completed':
+        return AppTheme.success;
+      case 'hiatus':
+        return AppTheme.warning;
+      default:
+        return AppTheme.primary;
     }
   }
 }
@@ -194,76 +210,36 @@ class NovelListTile extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    novel.title,
-                    style: GoogleFonts.playfairDisplay(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary,
+              child: Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      novel.title,
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    novel.author,
-                    style: GoogleFonts.nunito(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
+                    const SizedBox(height: 2),
+                    Text(
+                      novel.author,
+                      style: GoogleFonts.nunito(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 4,
-                    runSpacing: 4,
-                    children: novel.genres.take(2).map((g) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.getGenreColor(g).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        g,
-                        style: GoogleFonts.nunito(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.getGenreColor(g),
-                        ),
-                      ),
-                    )).toList(),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, size: 14, color: AppTheme.starColor),
-                      const SizedBox(width: 3),
-                      Text(
-                        novel.rating.toStringAsFixed(1),
-                        style: GoogleFonts.nunito(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.remove_red_eye_outlined, size: 14, color: AppTheme.textSecondary),
-                      const SizedBox(width: 3),
-                      Text(
-                        formatNumber(novel.viewCount),
-                        style: GoogleFonts.nunito(fontSize: 12, color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-            if (trailing != null) ...[
-              const SizedBox(width: 8),
-              trailing!,
-            ],
+            if (trailing != null) ...[const SizedBox(width: 8), trailing!],
           ],
         ),
       ),

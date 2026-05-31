@@ -1,4 +1,5 @@
 // lib/screens/reader/novel_detail_screen.dart
+import 'package:bookreader/services/database_service.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -18,13 +19,32 @@ class NovelDetailScreen extends StatefulWidget {
 
 class _NovelDetailScreenState extends State<NovelDetailScreen> {
   bool _descExpanded = false;
+  double? _userRating;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NovelProvider>().selectNovel(widget.novelId);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await context.read<NovelProvider>().selectNovel(widget.novelId);
+      final auth = context.read<AuthProvider>();
+      if (auth.isLoggedIn) {
+        final db = DatabaseService();
+        final r = await db.getUserRating(auth.currentUser!.id!, widget.novelId);
+        if (mounted) setState(() => _userRating = r);
+      }
     });
+  }
+
+  Future<void> _submitRating(double rating, int userId, int novelId) async {
+    final db = DatabaseService();
+    await db.upsertRating(userId, novelId, rating);
+    setState(() => _userRating = rating);
+    if (mounted) await context.read<NovelProvider>().selectNovel(novelId);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Đã đánh giá ${rating.toInt()} sao!')),
+      );
+    }
   }
 
   @override
@@ -33,7 +53,11 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
       builder: (context, novels, auth, bookmarks, _) {
         final novel = novels.selectedNovel;
         if (novel == null) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppTheme.primary)));
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: AppTheme.primary),
+            ),
+          );
         }
 
         final isBookmarked = bookmarks.isBookmarked(novel.id!);
@@ -57,18 +81,27 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                       color: Colors.black38,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ),
                 actions: [
                   if (auth.isLoggedIn)
                     GestureDetector(
                       onTap: () {
-                        bookmarks.toggleBookmark(auth.currentUser!.id!, novel.id!);
+                        bookmarks.toggleBookmark(
+                          auth.currentUser!.id!,
+                          novel.id!,
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              isBookmarked ? 'Đã xoá khỏi tủ sách' : 'Đã thêm vào tủ sách',
+                              isBookmarked
+                                  ? 'Đã xoá khỏi tủ sách'
+                                  : 'Đã thêm vào tủ sách',
                               style: GoogleFonts.nunito(),
                             ),
                             duration: const Duration(seconds: 2),
@@ -83,7 +116,9 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
-                          isBookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                          isBookmarked
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
                           color: isBookmarked ? AppTheme.accent : Colors.white,
                           size: 22,
                         ),
@@ -98,14 +133,18 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                       Image.network(
                         novel.coverUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(color: AppTheme.surfaceVariant),
+                        errorBuilder: (_, __, ___) =>
+                            Container(color: AppTheme.surfaceVariant),
                       ),
                       Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.black26, Colors.black.withOpacity(0.7)],
+                            colors: [
+                              Colors.black26,
+                              Colors.black.withOpacity(0.7),
+                            ],
                           ),
                         ),
                       ),
@@ -127,7 +166,10 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                             const SizedBox(height: 4),
                             Text(
                               novel.author,
-                              style: GoogleFonts.nunito(fontSize: 14, color: Colors.white70),
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                color: Colors.white70,
+                              ),
                             ),
                           ],
                         ),
@@ -166,9 +208,14 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: _getStatusColor(novel.status).withOpacity(0.12),
+                              color: _getStatusColor(
+                                novel.status,
+                              ).withOpacity(0.12),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
@@ -187,23 +234,42 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: novel.genres.map((g) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.getGenreColor(g).withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            g,
-                            style: GoogleFonts.nunito(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.getGenreColor(g),
-                            ),
-                          ),
-                        )).toList(),
+                        children: novel.genres
+                            .map(
+                              (g) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.getGenreColor(
+                                    g,
+                                  ).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  g,
+                                  style: GoogleFonts.nunito(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.getGenreColor(g),
+                                  ),
+                                ),
+                              ),
+                            )
+                            .toList(),
                       ),
                       const SizedBox(height: 20),
+                      if (auth.isLoggedIn)... [
+                        _RatingWidget(
+                          novelId: novel.id!,
+                          currentRating: novel.rating,
+                          ratingCount: novel.ratingCount,
+                          userRating: _userRating,
+                          onRate: (r) => _submitRating(r, auth.currentUser!.id!, novel.id!),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
                       // Description
                       Text(
                         'Giới thiệu',
@@ -225,7 +291,8 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                         overflow: _descExpanded ? null : TextOverflow.ellipsis,
                       ),
                       GestureDetector(
-                        onTap: () => setState(() => _descExpanded = !_descExpanded),
+                        onTap: () =>
+                            setState(() => _descExpanded = !_descExpanded),
                         child: Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text(
@@ -254,7 +321,10 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
                                     ),
                                   ),
                                 ),
-                                icon: const Icon(Icons.play_arrow_rounded, size: 20),
+                                icon: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  size: 20,
+                                ),
                                 label: const Text('Đọc từ đầu'),
                               ),
                             ),
@@ -278,65 +348,72 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
               ),
 
               SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, i) {
-                    final chapter = chapters[i];
-                    return InkWell(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ReaderScreen(
-                            novelId: novel.id!,
-                            chapterId: chapter.id!,
+                delegate: SliverChildBuilderDelegate((context, i) {
+                  final chapter = chapters[i];
+                  return InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ReaderScreen(
+                          novelId: novel.id!,
+                          chapterId: chapter.id!,
+                        ),
+                      ),
+                    ),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 4,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.divider),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            alignment: Alignment.center,
+                            child: Text(
+                              '${chapter.chapterNumber}',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.primary,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.divider),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: AppTheme.primary.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '${chapter.chapterNumber}',
-                                style: GoogleFonts.nunito(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTheme.primary,
-                                ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              chapter.title,
+                              style: GoogleFonts.nunito(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                chapter.title,
-                                style: GoogleFonts.nunito(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint, size: 20),
-                          ],
-                        ),
+                          ),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.textHint,
+                            size: 20,
+                          ),
+                        ],
                       ),
-                    );
-                  },
-                  childCount: chapters.length,
-                ),
+                    ),
+                  );
+                }, childCount: chapters.length),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -348,9 +425,12 @@ class _NovelDetailScreenState extends State<NovelDetailScreen> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'completed': return AppTheme.success;
-      case 'hiatus': return AppTheme.warning;
-      default: return AppTheme.primary;
+      case 'completed':
+        return AppTheme.success;
+      case 'hiatus':
+        return AppTheme.warning;
+      default:
+        return AppTheme.primary;
     }
   }
 }
@@ -360,7 +440,11 @@ class _StatBadge extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatBadge({required this.icon, required this.value, required this.color});
+  const _StatBadge({
+    required this.icon,
+    required this.value,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -371,9 +455,95 @@ class _StatBadge extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           value,
-          style: GoogleFonts.nunito(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+          style: GoogleFonts.nunito(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: AppTheme.textSecondary,
+          ),
         ),
       ],
+    );
+  }
+}
+
+class _RatingWidget extends StatelessWidget {
+  final int novelId;
+  final double currentRating;
+  final int ratingCount;
+  final double? userRating;
+  final ValueChanged<double> onRate;
+
+  const _RatingWidget({
+    required this.novelId,
+    required this.currentRating,
+    required this.ratingCount,
+    required this.userRating,
+    required this.onRate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, color: AppTheme.starColor, size: 20),
+              const SizedBox(width: 6),
+              Text(
+                currentRating.toStringAsFixed(1),
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '($ratingCount lượt)',
+                style: GoogleFonts.nunito(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            userRating == null ? 'Đánh giá của bạn:' : 'Bạn đã đánh giá:',
+            style: GoogleFonts.nunito(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(5, (i) {
+              final starValue = (i + 1).toDouble();
+              final filled = userRating != null && starValue <= userRating!;
+              return GestureDetector(
+                onTap: () => onRate(starValue),
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: Icon(
+                    filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                    color: filled ? AppTheme.starColor : AppTheme.textHint,
+                    size: 36,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 }
