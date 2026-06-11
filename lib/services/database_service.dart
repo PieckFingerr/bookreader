@@ -1,6 +1,7 @@
 // lib/services/database_service.dart
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/novel_model.dart';
@@ -32,7 +33,7 @@ class DatabaseService {
   // 1. CÁC HÀM CHO NGƯỜI DÙNG (USER / AUTH)
   // ============================================================================
   
-  Future<UserModel?> login(String username, String password) async {
+ Future<UserModel?> login(String username, String password) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/auth/login"),
@@ -40,12 +41,16 @@ class DatabaseService {
         body: jsonEncode({"username": username, "password": password}),
       ).timeout(networkTimeout);
 
+      debugPrint("LOGIN STATUS: ${response.statusCode}");
+      debugPrint("LOGIN BODY: ${response.body}"); // ← thêm dòng này
+      
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return UserModel.fromMap(data['user']);
       }
-      return null; // Sai tài khoản hoặc mật khẩu
+      return null;
     } catch (e) {
+      debugPrint("LOGIN ERROR: $e"); // ← và dòng này
       _handleNetworkError(e);
       return null;
     }
@@ -207,4 +212,7 @@ class DatabaseService {
       _handleNetworkError(e);
     }
   }
+
+  // ============================================================================
+ 
 }
