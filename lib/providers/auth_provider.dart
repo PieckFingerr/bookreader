@@ -17,11 +17,7 @@ class AuthProvider extends ChangeNotifier {
   final DatabaseService _db = DatabaseService();
 
   Future<void> tryAutoLogin() async {
-    final user = await _db.getSessionUser();
-    if (user != null) {
-      _currentUser = user;
-      notifyListeners();
-    }
+    notifyListeners();
   }
 
   Future<bool> login(String username, String password) async {
@@ -33,7 +29,6 @@ class AuthProvider extends ChangeNotifier {
       final user = await _db.login(username, password);
       if (user != null) {
         _currentUser = user;
-        await _db.saveSession(user.id!);
         _isLoading = false;
         notifyListeners();
         return true;
@@ -44,7 +39,7 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _error = 'Đã xảy ra lỗi. Vui lòng thử lại.';
+      _error = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
@@ -57,19 +52,7 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      if (await _db.usernameExists(username)) {
-        _error = 'Tên người dùng đã tồn tại';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-      if (await _db.emailExists(email)) {
-        _error = 'Email đã được sử dụng';
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-
+      // Gọi trực tiếp xuống Backend Node.js xử lý việc check trùng dữ liệu
       final success = await _db.register(username, email, password);
       if (success) {
         await login(username, password);
@@ -80,21 +63,16 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return false;
     } catch (e) {
-      _error = 'Đã xảy ra lỗi. Vui lòng thử lại.';
+      // Đọc chính xác nội dung lỗi trả về từ máy chủ Node.js/SQL Server
+      _error = e.toString().replaceAll('Exception: ', '');
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
-  Future<void> logout() async {
+  void logout() {
     _currentUser = null;
-    await _db.clearSession();
-    notifyListeners();
-  }
-
-  void clearError() {
-    _error = null;
     notifyListeners();
   }
 }

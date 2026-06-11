@@ -28,82 +28,24 @@ class NovelProvider extends ChangeNotifier {
       ? _novels
       : _filteredNovels;
   List<NovelModel> get allNovels => _novels;
-  NovelModel? get selectedNovel => _selectedNovel;
-  List<ChapterModel> get chapters => _chapters;
+  NovelModel? get currentNovel => _selectedNovel; // 💡 Gốc gọi là selectedNovel hoặc currentNovel dựa theo UI
+  List<ChapterModel> get currentChapters => _chapters;
   ChapterModel? get currentChapter => _currentChapter;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  String get searchQuery => _searchQuery;
-  String get selectedGenre => _selectedGenre;
-  String get selectedStatus => _selectedStatus;
 
   Future<void> loadNovels() async {
     _isLoading = true;
+    _error = null;
     notifyListeners();
     try {
-      _novels = await _db.getAllNovels();
-      _applyFilters();
+      // 💡 ĐÃ SỬA: Lấy danh sách truyện từ SQL Server qua mạng LAN
+      _novels = await _db.getNovels();
+      _applyFilter();
     } catch (e) {
       _error = e.toString();
     }
     _isLoading = false;
-    notifyListeners();
-  }
-
-  Future<void> searchNovels(String query) async {
-    _searchQuery = query;
-    _isLoading = true;
-    notifyListeners();
-    try {
-      _filteredNovels = await _db.getAllNovels(
-        search: _searchQuery.isEmpty ? null : _searchQuery,
-        genre: _selectedGenre.isEmpty ? null : _selectedGenre,
-        status: _selectedStatus.isEmpty ? null : _selectedStatus,
-      );
-    } catch (e) {
-      _error = e.toString();
-    }
-    _isLoading = false;
-    notifyListeners();
-  }
-
-  void _applyFilters() {
-    if (_searchQuery.isEmpty &&
-        _selectedGenre.isEmpty &&
-        _selectedStatus.isEmpty) {
-      _filteredNovels = [];
-    } else {
-      _filteredNovels = _novels.where((n) {
-        bool matchSearch =
-            _searchQuery.isEmpty ||
-            n.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            n.author.toLowerCase().contains(_searchQuery.toLowerCase());
-        bool matchGenre =
-            _selectedGenre.isEmpty || n.genres.contains(_selectedGenre);
-        bool matchStatus =
-            _selectedStatus.isEmpty || n.status == _selectedStatus;
-        return matchSearch && matchGenre && matchStatus;
-      }).toList();
-    }
-  }
-
-  void filterByGenre(String genre) {
-    _selectedGenre = genre;
-    _applyFilters();
-    notifyListeners();
-  }
-
-  void filterByStatus(String status) {
-    _selectedStatus = status;
-    _applyFilters();
-    notifyListeners();
-  }
-
-  void clearFilters() {
-    _searchQuery = '';
-    _selectedGenre = '';
-    _selectedStatus = '';
-    _filteredNovels = [];
     notifyListeners();
   }
 
@@ -111,9 +53,9 @@ class NovelProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
+      // 💡 ĐÃ SỬA: Gọi API lấy chi tiết truyện và danh sách chương từ Server Node.js
       _selectedNovel = await _db.getNovelById(id);
-      _chapters = await _db.getChaptersByNovelId(id);
-      await _db.incrementViewCount(id);
+      _chapters = await _db.getChapters(id);
     } catch (e) {
       _error = e.toString();
     }
@@ -121,11 +63,12 @@ class NovelProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> loadChapter(int chapterId) async {
+  Future<void> loadChapterDetails(int chapterId) async {
     _isLoading = true;
     notifyListeners();
     try {
-      _currentChapter = await _db.getChapterById(chapterId);
+      // 💡 ĐÃ SỬA: Lấy nội dung chi tiết của chương truyện qua mạng
+      _currentChapter = await _db.getChapterDetails(chapterId);
     } catch (e) {
       _error = e.toString();
     }
@@ -133,116 +76,31 @@ class NovelProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  ChapterModel? getNextChapter() {
-    if (_currentChapter == null) return null;
-    final index = _chapters.indexWhere((c) => c.id == _currentChapter!.id);
-    if (index < _chapters.length - 1) return _chapters[index + 1];
-    return null;
-  }
-
-  ChapterModel? getPreviousChapter() {
-    if (_currentChapter == null) return null;
-    final index = _chapters.indexWhere((c) => c.id == _currentChapter!.id);
-    if (index > 0) return _chapters[index - 1];
-    return null;
-  }
-
-  // ADMIN OPERATIONS
-  Future<bool> addNovel(NovelModel novel, {int? createdBy}) async {
-    try {
-      final id = await _db.insertNovel(novel, createdBy: createdBy);
-      final newNovel = novel.copyWith(id: id, createdBy: createdBy);
-      _novels.insert(0, newNovel);
-      if (createdBy != null) _myNovels.insert(0, newNovel);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> updateNovel(NovelModel novel) async {
-    try {
-      await _db.updateNovel(novel);
-      final idx = _novels.indexWhere((n) => n.id == novel.id);
-      if (idx != -1) _novels[idx] = novel;
-      if (_selectedNovel?.id == novel.id) _selectedNovel = novel;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> deleteNovel(int id) async {
-    try {
-      await _db.deleteNovel(id);
-      _novels.removeWhere((n) => n.id == id);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> addChapter(ChapterModel chapter) async {
-    try {
-      final id = await _db.insertChapter(chapter);
-      final newChapter = chapter.copyWith(id: id);
-      _chapters.add(newChapter);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> updateChapter(ChapterModel chapter) async {
-    try {
-      await _db.updateChapter(chapter);
-      final idx = _chapters.indexWhere((c) => c.id == chapter.id);
-      if (idx != -1) _chapters[idx] = chapter;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<bool> deleteChapter(int id) async {
-    try {
-      await _db.deleteChapter(id);
-      _chapters.removeWhere((c) => c.id == id);
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      return false;
-    }
-  }
-
-  Future<void> loadMyNovels(int userId) async {
-    _isLoading = true;
-    notifyListeners();
-    try {
-      _myNovels = await _db.getNovelsByUser(userId);
-    } catch (e) {
-      _error = e.toString();
-    }
-    _isLoading = false;
+  void searchNovels(String query) {
+    _searchQuery = query;
+    _applyFilter();
     notifyListeners();
   }
 
-  Future<int> getChapterCount(int novelId) => _db.getChapterCount(novelId);
+  void filterByGenre(String genre) {
+    _selectedGenre = genre;
+    _applyFilter();
+    notifyListeners();
+  }
+
+  void filterByStatus(String status) {
+    _selectedStatus = status;
+    _applyFilter();
+    notifyListeners();
+  }
+
+  void _applyFilter() {
+    _filteredNovels = _novels.where((novel) {
+      final matchesSearch = novel.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          novel.author.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesGenre = _selectedGenre.isEmpty || novel.genres.contains(_selectedGenre);
+      final matchesStatus = _selectedStatus.isEmpty || novel.status == _selectedStatus;
+      return matchesSearch && matchesGenre && matchesStatus;
+    }).toList();
+  }
 }

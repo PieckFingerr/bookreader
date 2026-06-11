@@ -33,76 +33,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
+    
     final success = await auth.register(
       _usernameCtrl.text.trim(),
       _emailCtrl.text.trim(),
       _passwordCtrl.text,
     );
+    
     if (success && mounted) {
       Navigator.pop(context);
+    } else if (mounted) {
+      // Cập nhật SnackBar đọc trực tiếp biến `auth.error` động từ Server trả về
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Đăng ký thất bại!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: Text('Tạo tài khoản', style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppTheme.textPrimary,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Consumer<AuthProvider>(
-            builder: (context, auth, _) {
-              return Form(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tạo tài khoản',
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Đăng ký để lưu tiến trình đọc và bình chọn cho truyện yêu thích',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Chào mừng bạn!',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Tạo tài khoản để theo dõi và lưu truyện yêu thích.',
-                      style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.textSecondary),
-                    ),
-                    const SizedBox(height: 32),
-                    if (auth.error != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppTheme.error.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppTheme.error.withOpacity(0.3)),
-                        ),
-                        child: Text(auth.error!, style: GoogleFonts.nunito(color: AppTheme.error, fontSize: 13)),
-                      ),
                     TextFormField(
                       controller: _usernameCtrl,
                       decoration: const InputDecoration(
-                        labelText: 'Tên người dùng',
+                        labelText: 'Tên đăng nhập',
                         prefixIcon: Icon(Icons.person_outline_rounded),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Vui lòng nhập tên người dùng';
-                        if (v.length < 3) return 'Tên người dùng phải có ít nhất 3 ký tự';
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(v))
-                          return 'Chỉ dùng chữ cái, số và dấu _';
+                        if (v == null || v.trim().isEmpty) return 'Vui lòng nhập tên đăng nhập';
+                        if (v.trim().length < 3) return 'Tên đăng nhập tối thiểu 3 ký tự';
                         return null;
                       },
-                      onChanged: (_) => auth.clearError(),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -113,12 +112,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Vui lòng nhập email';
-                        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v))
-                          return 'Email không hợp lệ';
+                        if (v == null || v.trim().isEmpty) return 'Vui lòng nhập email';
+                        final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                        if (!emailRegex.hasMatch(v.trim())) return 'Email không đúng định dạng';
                         return null;
                       },
-                      onChanged: (_) => auth.clearError(),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -134,10 +132,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       validator: (v) {
                         if (v == null || v.isEmpty) return 'Vui lòng nhập mật khẩu';
-                        if (v.length < 6) return 'Mật khẩu phải có ít nhất 6 ký tự';
+                        if (v.length < 6) return 'Mật khẩu tối thiểu 6 ký tự';
                         return null;
                       },
-                      onChanged: (_) => auth.clearError(),
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -174,8 +171,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ],
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),

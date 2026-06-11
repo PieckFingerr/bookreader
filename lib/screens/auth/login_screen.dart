@@ -34,6 +34,22 @@ class _LoginScreenState extends State<LoginScreen> {
     if (success && mounted) {
       final user = auth.currentUser!;
       await context.read<BookmarkProvider>().loadBookmarks(user.id!);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Chào mừng ${user.username} trở lại!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(auth.error ?? 'Đăng nhập thất bại!'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -41,112 +57,67 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.background,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: AppTheme.textPrimary,
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 60),
-              // Logo area
-              Center(
-                child: Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 38),
-                ),
-              ),
-              const SizedBox(height: 28),
-              Center(
-                child: Text(
-                  'NoveLit',
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 34,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ),
-              Center(
-                child: Text(
-                  'Thế giới Light Novel của bạn',
-                  style: GoogleFonts.nunito(
-                    fontSize: 14,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 48),
               Text(
-                'Đăng nhập',
+                'Chào mừng trở lại',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 26,
+                  fontSize: 28,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 24),
-              Consumer<AuthProvider>(
-                builder: (context, auth, _) {
-                  return Form(
-                    key: _formKey,
-                    child: Column(
-                      children: [
-                        if (auth.error != null)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppTheme.error.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.error.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error_outline, color: AppTheme.error, size: 18),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    auth.error!,
-                                    style: GoogleFonts.nunito(color: AppTheme.error, fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        TextFormField(
-                          controller: _usernameCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'Tên đăng nhập / Email',
-                            prefixIcon: Icon(Icons.person_outline_rounded),
-                          ),
-                          validator: (v) => v == null || v.isEmpty ? 'Vui lòng nhập tên đăng nhập' : null,
-                          onChanged: (_) => auth.clearError(),
+              const SizedBox(height: 8),
+              Text(
+                'Đăng nhập để tiếp tục đọc những bộ truyện yêu thích của bạn',
+                style: GoogleFonts.nunito(
+                  fontSize: 14,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 32),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      controller: _usernameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Tên đăng nhập',
+                        prefixIcon: Icon(Icons.person_outline_rounded),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'Vui lòng nhập tên đăng nhập' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _passwordCtrl,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'Mật khẩu',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
-                        const SizedBox(height: 16),
-                        TextFormField(
-                          controller: _passwordCtrl,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            labelText: 'Mật khẩu',
-                            prefixIcon: const Icon(Icons.lock_outline_rounded),
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                            ),
-                          ),
-                          validator: (v) => v == null || v.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
-                          onChanged: (_) => auth.clearError(),
-                        ),
-                        const SizedBox(height: 28),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 52,
-                          child: ElevatedButton(
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? 'Vui lòng nhập mật khẩu' : null,
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: Consumer<AuthProvider>(
+                        builder: (context, auth, _) {
+                          return ElevatedButton(
                             onPressed: auth.isLoading ? null : _login,
                             child: auth.isLoading
                                 ? const SizedBox(
@@ -155,59 +126,60 @@ class _LoginScreenState extends State<LoginScreen> {
                                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                                   )
                                 : const Text('Đăng nhập'),
-                          ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Chưa có tài khoản? ',
+                          style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.textSecondary),
                         ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Chưa có tài khoản? ',
-                              style: GoogleFonts.nunito(color: AppTheme.textSecondary, fontSize: 14),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                            );
+                          },
+                          child: Text(
+                            'Đăng ký ngay',
+                            style: GoogleFonts.nunito(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                              decoration: TextDecoration.underline,
+                              decorationColor: AppTheme.primary,
                             ),
-                            GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                              ),
-                              child: Text(
-                                'Đăng ký ngay',
-                                style: GoogleFonts.nunito(
-                                  color: AppTheme.primary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: AppTheme.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Demo hint
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.accentLight,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info_outline, size: 16, color: AppTheme.accent),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Admin: admin / admin123',
-                                  style: GoogleFonts.nunito(fontSize: 12, color: AppTheme.textSecondary),
-                                ),
-                              ),
-                            ],
                           ),
                         ),
                       ],
                     ),
-                  );
-                },
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.info_outline, size: 16, color: AppTheme.accent),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Admin: admin / admin123',
+                              style: GoogleFonts.nunito(fontSize: 12, color: AppTheme.textSecondary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 40),
             ],

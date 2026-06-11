@@ -1,10 +1,7 @@
 // lib/screens/home/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/novel_provider.dart';
-import '../../providers/bookmark_provider.dart';
 import '../../utils/app_theme.dart';
 import 'discover_tab.dart';
 import 'bookmarks_tab.dart';
@@ -37,8 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isAdmin = context.watch<AuthProvider>().isAdmin;
-
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

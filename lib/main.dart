@@ -47,9 +47,8 @@ class _AppRootState extends State<AppRoot> {
   @override
   void initState() {
     super.initState();
-    _init();
-    // Lắng nghe auth thay đổi
     context.read<AuthProvider>().addListener(_onAuthChanged);
+    _init();
   }
 
   @override
@@ -58,14 +57,16 @@ class _AppRootState extends State<AppRoot> {
     super.dispose();
   }
 
-
   void _onAuthChanged() {
     final auth = context.read<AuthProvider>();
     final bookmarks = context.read<BookmarkProvider>();
     if (!auth.isLoggedIn) {
       bookmarks.clear();  // clear khi logout
     } else if (auth.currentUser != null) {
-      bookmarks.loadBookmarks(auth.currentUser!.id!);  // load khi login
+      // Bọc thêm try catch phòng hờ lỗi No element dính kết nối
+      try {
+        bookmarks.loadBookmarks(auth.currentUser!.id!);  // load khi login
+      } catch (_) {}
     }
   }
 
@@ -73,7 +74,12 @@ class _AppRootState extends State<AppRoot> {
     final auth = context.read<AuthProvider>();
     await auth.tryAutoLogin();
     if (auth.isLoggedIn) {
-      await context.read<BookmarkProvider>().loadBookmarks(auth.currentUser!.id!);
+      // 🏆 SỬA TẠI ĐÂY: Bọc try-catch bảo vệ ứng dụng không bị sập khi khởi động
+      try {
+        await context.read<BookmarkProvider>().loadBookmarks(auth.currentUser!.id!);
+      } catch (e) {
+        debugPrint("Lỗi nạp danh sách bookmark khởi tạo: $e");
+      }
     }
     setState(() => _initialized = true);
   }
@@ -96,13 +102,7 @@ class _AppRootState extends State<AppRoot> {
       );
     }
 
-    return Consumer<AuthProvider>(
-      builder: (context, auth, _) {
-        if (auth.isLoggedIn) {
-          return const HomeScreen();
-        }
-        return const LoginScreen();
-      },
-    );
+    // Khi khởi tạo xong thì điều hướng thẳng vào màn hình Home
+    return const HomeScreen(); 
   }
 }

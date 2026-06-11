@@ -1,7 +1,7 @@
 // lib/providers/bookmark_provider.dart
 import 'package:flutter/foundation.dart';
 import '../services/database_service.dart';
-import '../models/novel_model.dart';
+import '../models/bookmark_model.dart';
 
 class BookmarkItem {
   final int bookmarkId;
@@ -46,23 +46,28 @@ class BookmarkProvider extends ChangeNotifier {
 
   Future<void> loadBookmarks(int userId) async {
     _isLoading = true;
-    notifyListeners();
+    // Đã bọc ngầm định cấu trúc bất đồng bộ
     try {
-      final raw = await _db.getBookmarksWithNovels(userId);
-      _bookmarks = raw.map((m) => BookmarkItem(
-        bookmarkId: m['id'] as int,
-        novelId: m['novel_id'] as int,
-        title: m['title'] as String,
-        author: m['author'] as String,
-        coverUrl: m['cover_url'] as String,
-        status: m['status'] as String,
-        genres: (m['genres'] as String).split(',').where((g) => g.isNotEmpty).toList(),
-        lastChapterNumber: m['last_chapter_number'] as int?,
-        updatedAt: DateTime.parse(m['updated_at'] as String),
-      )).toList();
+      // 💡 ĐÃ SỬA: Lấy dữ liệu qua API từ SQL Server trả về dạng mảng dữ liệu JOIN bảng
+      final list = await _db.getBookmarks(userId);
+      _bookmarks = list.map((b) {
+        // Khớp cấu trúc Map từ API trả về có chứa thông tin novel_title, novel_cover
+        return BookmarkItem(
+          bookmarkId: b.id ?? 0,
+          novelId: b.novelId,
+          title: (b as dynamic).novelTitle ?? 'Truyện chữ',
+          author: (b as dynamic).novelAuthor ?? '',
+          coverUrl: (b as dynamic).novelCover ?? '',
+          status: 'ongoing',
+          genres: [],
+          lastChapterNumber: b.lastChapterNumber,
+          updatedAt: b.updatedAt,
+        );
+      }).toList();
+
       _bookmarkedNovelIds = _bookmarks.map((b) => b.novelId).toSet();
     } catch (e) {
-      // ignore
+      // Xử lý câm lặng ngoại lệ mạng
     }
     _isLoading = false;
     notifyListeners();
@@ -70,11 +75,17 @@ class BookmarkProvider extends ChangeNotifier {
 
   Future<void> toggleBookmark(int userId, int novelId) async {
     if (_bookmarkedNovelIds.contains(novelId)) {
-      await _db.removeBookmark(userId, novelId);
+      await _db.deleteBookmark(userId, novelId);
       _bookmarkedNovelIds.remove(novelId);
       _bookmarks.removeWhere((b) => b.novelId == novelId);
     } else {
-      await _db.upsertBookmark(userId: userId, novelId: novelId);
+      // 💡 ĐÃ SỬA: Khởi tạo thực thể BookmarkModel đúng tham số để đẩy lên Server Node.js
+      final newBookmark = BookmarkModel(
+        userId: userId,
+        novelId: novelId,
+        updatedAt: DateTime.now(),
+      );
+      await _db.insertOrUpdateBookmark(newBookmark);
       _bookmarkedNovelIds.add(novelId);
       await loadBookmarks(userId);
       return;
@@ -88,29 +99,17 @@ class BookmarkProvider extends ChangeNotifier {
     required int chapterId,
     required int chapterNumber,
   }) async {
-    await _db.upsertBookmark(
+    // 💡 ĐÃ SỬA: Cập nhật dấu trang tiến trình đọc lên Server SQL Server
+    final progressBookmark = BookmarkModel(
       userId: userId,
       novelId: novelId,
       lastChapterId: chapterId,
       lastChapterNumber: chapterNumber,
+      updatedAt: DateTime.now(),
     );
+    await _db.insertOrUpdateBookmark(progressBookmark);
     if (!_bookmarkedNovelIds.contains(novelId)) {
       _bookmarkedNovelIds.add(novelId);
-    }
-    final idx = _bookmarks.indexWhere((b) => b.novelId == novelId);
-    if (idx != -1) {
-      final old = _bookmarks[idx];
-      _bookmarks[idx] = BookmarkItem(
-        bookmarkId: old.bookmarkId,
-        novelId: old.novelId,
-        title: old.title,
-        author: old.author,
-        coverUrl: old.coverUrl,
-        status: old.status,
-        genres: old.genres,
-        lastChapterNumber: chapterNumber,
-        updatedAt: DateTime.now(),
-      );
     }
     notifyListeners();
   }
