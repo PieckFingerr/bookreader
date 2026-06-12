@@ -13,14 +13,9 @@ class DatabaseService {
   factory DatabaseService() => _instance;
   DatabaseService._internal();
 
-  // ⚠️ THAY ĐỔI: Sử dụng IP LAN của máy tính chạy server Node.js (Ví dụ: 192.168.1.50)
-  // Không dùng localhost vì điện thoại/máy ảo sẽ gọi vào chính nó dẫn đến lỗi Connection Refused.
-  static const String baseUrl = "http://192.168.1.254:5000/api"; 
-
-  // Cấu hình thời gian chờ tối đa để lấy trọn vẹn Điểm Khó 1 (Xử lý Timeout)
+  static const String baseUrl = "http://192.168.1.254:5000/api";
   static const Duration networkTimeout = Duration(seconds: 7);
 
-  // Helper để xử lý các lỗi ngoại lệ mạng chung, ném thông báo tiếng Việt trực quan ra UI
   void _handleNetworkError(Object error) {
     if (error is TimeoutException) {
       throw Exception("Kết nối tới máy chủ SQL Server quá hạn (Timeout). Vui lòng kiểm tra lại mạng!");
@@ -32,8 +27,8 @@ class DatabaseService {
   // ============================================================================
   // 1. CÁC HÀM CHO NGƯỜI DÙNG (USER / AUTH)
   // ============================================================================
-  
- Future<UserModel?> login(String username, String password) async {
+
+  Future<UserModel?> login(String username, String password) async {
     try {
       final response = await http.post(
         Uri.parse("$baseUrl/auth/login"),
@@ -42,15 +37,15 @@ class DatabaseService {
       ).timeout(networkTimeout);
 
       debugPrint("LOGIN STATUS: ${response.statusCode}");
-      debugPrint("LOGIN BODY: ${response.body}"); // ← thêm dòng này
-      
+      debugPrint("LOGIN BODY: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return UserModel.fromMap(data['user']);
       }
       return null;
     } catch (e) {
-      debugPrint("LOGIN ERROR: $e"); // ← và dòng này
+      debugPrint("LOGIN ERROR: $e");
       _handleNetworkError(e);
       return null;
     }
@@ -74,7 +69,71 @@ class DatabaseService {
   // ============================================================================
   // 2. CÁC HÀM TRUY VẤN TRUYỆN CHỮ (NOVELS)
   // ============================================================================
-  
+
+  Future<void> createNovel(NovelModel novel) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/novels"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": novel.title,
+          // author KHÔNG gửi lên — server tự lấy username của createdBy
+          "description": novel.description,
+          "coverUrl": novel.coverUrl,
+          "genres": novel.genres.join(','),
+          "status": novel.status,
+          "createdBy": novel.createdBy,
+        }),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 201) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể tạo truyện mới.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
+  Future<void> updateNovel(NovelModel novel) async {
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/novels/${novel.id}"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": novel.title,
+          "description": novel.description,
+          "coverUrl": novel.coverUrl,
+          "genres": novel.genres.join(','),
+          "status": novel.status,
+          "createdBy": novel.createdBy,
+        }),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 200) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể thực hiện chỉnh sửa.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
+  Future<void> deleteNovel(int novelId, int userId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/novels/$novelId/$userId"),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 200) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể xóa dữ liệu truyện.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
   Future<List<NovelModel>> getNovels() async {
     try {
       final response = await http.get(Uri.parse("$baseUrl/novels")).timeout(networkTimeout);
@@ -105,18 +164,15 @@ class DatabaseService {
   }
 
   // ============================================================================
-  // 3. CÁC HÀM CHO CHƯƠNG TRUYỆN (CHAPTERS)
+  // 3. CÁC HÀM CHO CHƯƠNG TRUYỆN (CHAPTERS) — CÓ CRUD ĐẦY ĐỦ
   // ============================================================================
-  
+
   Future<List<ChapterModel>> getChapters(int novelId) async {
     try {
       final response = await http.get(Uri.parse("$baseUrl/novels/$novelId/chapters")).timeout(networkTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
-        
-        // Vì API Node.js tối ưu hóa không trả về cột 'content' ở danh sách chương, 
-        // ta gán giá trị rỗng để tránh lỗi null map của Model Dart
         return list.map((item) {
           final map = Map<String, dynamic>.from(item);
           if (!map.containsKey('content')) map['content'] = '';
@@ -144,10 +200,84 @@ class DatabaseService {
     }
   }
 
+  /// Thêm chương mới — server tự tính chapter_number tiếp theo
+  /// [userId] dùng để server xác thực quyền (chủ sở hữu hoặc admin)
+  Future<void> createChapter({
+    required int novelId,
+    required String title,
+    required String content,
+    required int userId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/novels/$novelId/chapters"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": title,
+          "content": content,
+          "userId": userId,
+        }),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 201) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể thêm chương mới.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
+  /// Cập nhật nội dung chương — server kiểm tra quyền qua [userId]
+  Future<void> updateChapter({
+    required int chapterId,
+    required String title,
+    required String content,
+    required int userId,
+  }) async {
+    try {
+      final response = await http.put(
+        Uri.parse("$baseUrl/chapters/$chapterId"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "title": title,
+          "content": content,
+          "userId": userId,
+        }),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 200) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể cập nhật chương.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
+  /// Xóa chương — server tự đánh lại số thứ tự sau khi xóa
+  Future<void> deleteChapter({
+    required int chapterId,
+    required int userId,
+  }) async {
+    try {
+      final response = await http.delete(
+        Uri.parse("$baseUrl/chapters/$chapterId/$userId"),
+      ).timeout(networkTimeout);
+
+      if (response.statusCode != 200) {
+        final errData = jsonDecode(response.body);
+        throw Exception(errData['message'] ?? "Không thể xóa chương.");
+      }
+    } catch (e) {
+      _handleNetworkError(e);
+    }
+  }
+
   // ============================================================================
   // 4. CÁC HÀM CHO DANH SÁCH THEO DÕI (BOOKMARKS)
   // ============================================================================
-  
+
   Future<List<BookmarkModel>> getBookmarks(int userId) async {
     try {
       final response = await http.get(Uri.parse("$baseUrl/bookmarks/$userId")).timeout(networkTimeout);
@@ -189,9 +319,9 @@ class DatabaseService {
   }
 
   // ============================================================================
-  // 5. ĐÁNH GIÁ TRUYỆN - GỌI STORED PROCEDURE THÔNG QUA BACKEND (🏆 ĐIỂM GIỎI)
+  // 5. ĐÁNH GIÁ TRUYỆN - GỌI STORED PROCEDURE (🏆 ĐIỂM GIỎI)
   // ============================================================================
-  
+
   Future<void> upsertRating(int userId, int novelId, double rating) async {
     try {
       final response = await http.post(
@@ -212,7 +342,4 @@ class DatabaseService {
       _handleNetworkError(e);
     }
   }
-
-  // ============================================================================
- 
 }

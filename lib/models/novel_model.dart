@@ -13,7 +13,6 @@ class NovelModel {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int? createdBy;
-  
 
   NovelModel({
     this.id,
@@ -47,21 +46,28 @@ class NovelModel {
         'updated_at': updatedAt.toIso8601String(),
       };
 
-  factory NovelModel.fromMap(Map<String, dynamic> map) => NovelModel(
-        id: map['id'],
-        title: map['title'],
-        author: map['author'],
-        description: map['description'],
-        coverUrl: map['cover_url'],
-        createdBy: map['created_by'] as int?,
-        genres: (map['genres'] as String).split(',').where((g) => g.isNotEmpty).toList(),
-        status: map['status'],
-        viewCount: map['view_count'] ?? 0,
-        rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
-        ratingCount: map['rating_count'] ?? 0,
-        createdAt: DateTime.parse(map['created_at']),
-        updatedAt: DateTime.parse(map['updated_at']),
-      );
+  factory NovelModel.fromMap(Map<String, dynamic> map) {
+    return NovelModel(
+      id: map['id'] as int?,
+      title: map['title']?.toString() ?? '',
+      author: map['author']?.toString() ?? '',
+      description: map['description']?.toString() ?? '',
+      // 🏆 ĐÃ SỬA: Đọc cả hai trường 'cover_url' hoặc 'coverUrl' để tương thích hoàn toàn với Web API Node.js
+      coverUrl: map['cover_url']?.toString() ?? map['coverUrl']?.toString() ?? '',
+      genres: map['genres'] is List
+          ? List<String>.from(map['genres'])
+          : (map['genres']?.toString().split(',').where((g) => g.trim().isNotEmpty).toList() ?? []),
+      status: map['status']?.toString() ?? 'ongoing',
+      // Đọc an toàn các biến số và ngày tháng từ driver mssql của SQL Server gửi qua mạng
+      viewCount: map['view_count'] != null ? int.parse(map['view_count'].toString()) : (map['viewCount'] ?? 0),
+      rating: map['rating'] != null ? double.parse(map['rating'].toString()) : ((map['rating'] as num?)?.toDouble() ?? 0.0),
+      ratingCount: map['rating_count'] != null ? int.parse(map['rating_count'].toString()) : (map['ratingCount'] ?? 0),
+      // 🏆 ĐÃ SỬA: Bổ sung trường này bị thiếu ngầm trong hàm fromMap cũ của bạn
+      createdBy: map['created_by'] as int?,
+      createdAt: map['created_at'] != null ? DateTime.parse(map['created_at'].toString()) : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.parse(map['updated_at'].toString()) : DateTime.now(),
+    );
+  }
 
   NovelModel copyWith({
     int? id,
@@ -75,7 +81,8 @@ class NovelModel {
     double? rating,
     int? ratingCount,
     DateTime? createdAt,
-    DateTime? updatedAt, int? createdBy,
+    DateTime? updatedAt,
+    int? createdBy,
   }) =>
       NovelModel(
         id: id ?? this.id,
@@ -92,13 +99,4 @@ class NovelModel {
         updatedAt: updatedAt ?? this.updatedAt,
         createdBy: createdBy ?? this.createdBy,
       );
-
-  String get statusLabel {
-    switch (status) {
-      case 'ongoing': return 'Đang ra';
-      case 'completed': return 'Hoàn thành';
-      case 'hiatus': return 'Tạm dừng';
-      default: return status;
-    }
-  }
 }

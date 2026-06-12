@@ -22,14 +22,19 @@ class NovelProvider extends ChangeNotifier {
 
   List<NovelModel> get novels =>
       _filteredNovels.isEmpty &&
-          _searchQuery.isEmpty &&
-          _selectedGenre.isEmpty &&
-          _selectedStatus.isEmpty
-      ? _novels
-      : _filteredNovels;
+              _searchQuery.isEmpty &&
+              _selectedGenre.isEmpty &&
+              _selectedStatus.isEmpty
+          ? _novels
+          : _filteredNovels;
   List<NovelModel> get allNovels => _novels;
-  NovelModel? get currentNovel => _selectedNovel; // 💡 Gốc gọi là selectedNovel hoặc currentNovel dựa theo UI
+  
+  // 🏆 ĐÃ SỬA: Đổi tên getter thành currentNovel và currentChapters để khớp 100% với file novel_detail_screen.dart
+  NovelModel? get currentNovel => _selectedNovel;
+  NovelModel? get selectedNovel => _selectedNovel; // Giữ phòng hờ các màn hình khác gọi
   List<ChapterModel> get currentChapters => _chapters;
+  List<ChapterModel> get chapters => _chapters; // Giữ phòng hờ các màn hình khác gọi
+  
   ChapterModel? get currentChapter => _currentChapter;
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -39,7 +44,6 @@ class NovelProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      // 💡 ĐÃ SỬA: Lấy danh sách truyện từ SQL Server qua mạng LAN
       _novels = await _db.getNovels();
       _applyFilter();
     } catch (e) {
@@ -53,8 +57,8 @@ class NovelProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      // 💡 ĐÃ SỬA: Gọi API lấy chi tiết truyện và danh sách chương từ Server Node.js
       _selectedNovel = await _db.getNovelById(id);
+      // Gọi API Node.js lấy danh sách chương của bộ truyện từ SQL Server
       _chapters = await _db.getChapters(id);
     } catch (e) {
       _error = e.toString();
@@ -67,8 +71,22 @@ class NovelProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
     try {
-      // 💡 ĐÃ SỬA: Lấy nội dung chi tiết của chương truyện qua mạng
       _currentChapter = await _db.getChapterDetails(chapterId);
+    } catch (e) {
+      _error = e.toString();
+    }
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> loadMyNovels(int userId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await loadNovels();
+      _myNovels = _novels.where((novel) => novel.createdBy == userId).toList();
+      _applyFilter();
     } catch (e) {
       _error = e.toString();
     }
@@ -102,5 +120,57 @@ class NovelProvider extends ChangeNotifier {
       final matchesStatus = _selectedStatus.isEmpty || novel.status == _selectedStatus;
       return matchesSearch && matchesGenre && matchesStatus;
     }).toList();
+  }
+
+  // Thêm vào trong class NovelProvider
+  Future<void> addNovel(NovelModel novel, int userId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _db.createNovel(novel);
+      // Tải lại toàn bộ danh sách truyện từ Server để đồng bộ hóa local state
+      await loadNovels();
+      // Cập nhật lại danh sách "Truyện của tôi"
+      _myNovels = _novels.where((n) => n.createdBy == userId).toList();
+    } catch (e) {
+      _error = e.toString();
+      rethrow; // Ném ngược ra ngoài để UI catch hiển thị thông báo lỗi
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> editNovel(NovelModel novel) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _db.updateNovel(novel);
+      await loadNovels(); // Kích hoạt nạp lại dữ liệu đồng bộ
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> removeNovel(int novelId, int userId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _db.deleteNovel(novelId, userId);
+      await loadNovels(); // Đồng bộ hóa làm sạch UI
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

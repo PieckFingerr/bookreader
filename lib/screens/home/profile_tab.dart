@@ -9,6 +9,7 @@ import '../../providers/bookmark_provider.dart';
 import '../../utils/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../admin/admin_screen.dart';
+import '../home/my_novels_screen.dart';
 
 class ProfileTab extends StatelessWidget {
   const ProfileTab({super.key});
@@ -29,18 +30,28 @@ class ProfileTab extends StatelessWidget {
                 CircleAvatar(
                   radius: 44,
                   backgroundColor: AppTheme.surfaceVariant,
-                  child: const Icon(Icons.person_outline_rounded, size: 44, color: AppTheme.textHint),
+                  child: const Icon(
+                    Icons.person_outline_rounded,
+                    size: 44,
+                    color: AppTheme.textHint,
+                  ),
                 ),
                 const SizedBox(height: 20),
                 Text(
                   'Chưa đăng nhập',
-                  style: GoogleFonts.playfairDisplay(fontSize: 22, fontWeight: FontWeight.w700),
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Đăng nhập để xem tủ sách cá nhân và quản lý nội dung đăng truyện',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.textSecondary),
+                  style: GoogleFonts.nunito(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
                 const SizedBox(height: 32),
                 SizedBox(
@@ -64,12 +75,19 @@ class ProfileTab extends StatelessWidget {
     final user = auth.currentUser!;
     final List<_MenuItem> items = [
       _MenuItem(
-        icon: Icons.auto_stories_rounded,
+        icon: Icons.menu_book_rounded,
         label: 'Truyện của tôi',
         color: AppTheme.primary,
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => MyNovelsScreen(userId: user.id!)),
+          MaterialPageRoute(
+            builder: (_) => MyNovelsScreen(
+              userId: auth.currentUser!.id!,
+              isAdmin: auth.currentUser!.isAdmin
+                  ? 1
+                  : 0, // <-- THÊM DÒNG NÀY VÀO
+            ),
+          ),
         ),
       ),
       if (auth.isAdmin)
@@ -103,16 +121,24 @@ class ProfileTab extends StatelessWidget {
             children: [
               Text(
                 'Tài Khoản',
-                style: GoogleFonts.playfairDisplay(fontSize: 24, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
               ),
               const SizedBox(height: 28),
               Row(
                 children: [
                   CircleAvatar(
                     radius: 32,
-                    backgroundColor: auth.isAdmin ? AppTheme.accent.withOpacity(0.15) : AppTheme.primary.withOpacity(0.15),
+                    backgroundColor: auth.isAdmin
+                        ? AppTheme.accent.withOpacity(0.15)
+                        : AppTheme.primary.withOpacity(0.15),
                     child: Icon(
-                      auth.isAdmin ? Icons.admin_panel_settings_rounded : Icons.person_rounded,
+                      auth.isAdmin
+                          ? Icons.admin_panel_settings_rounded
+                          : Icons.person_rounded,
                       size: 32,
                       color: auth.isAdmin ? AppTheme.accent : AppTheme.primary,
                     ),
@@ -124,12 +150,19 @@ class ProfileTab extends StatelessWidget {
                       children: [
                         Text(
                           user.username,
-                          style: GoogleFonts.nunito(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                          style: GoogleFonts.nunito(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           user.email,
-                          style: GoogleFonts.nunito(fontSize: 14, color: AppTheme.textSecondary),
+                          style: GoogleFonts.nunito(
+                            fontSize: 14,
+                            color: AppTheme.textSecondary,
+                          ),
                         ),
                       ],
                     ),
@@ -158,8 +191,17 @@ class ProfileTab extends StatelessWidget {
                             ),
                             child: Icon(item.icon, color: item.color, size: 20),
                           ),
-                          title: Text(item.label, style: GoogleFonts.nunito(fontWeight: FontWeight.w600, fontSize: 14)),
-                          trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
+                          title: Text(
+                            item.label,
+                            style: GoogleFonts.nunito(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          trailing: const Icon(
+                            Icons.chevron_right_rounded,
+                            color: AppTheme.textHint,
+                          ),
                           onTap: item.onTap,
                         ),
                         if (!isLast) const Divider(height: 1, indent: 60),
@@ -182,5 +224,10 @@ class _MenuItem {
   final Color color;
   final VoidCallback onTap;
 
-  const _MenuItem({required this.icon, required this.label, required this.color, required this.onTap});
+  const _MenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 }

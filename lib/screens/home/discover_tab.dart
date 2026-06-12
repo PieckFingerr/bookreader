@@ -7,8 +7,25 @@ import '../../utils/app_theme.dart';
 import '../../widgets/novel_card.dart';
 import '../reader/novel_detail_screen.dart';
 
-class DiscoverTab extends StatelessWidget {
+class DiscoverTab extends StatefulWidget {
   const DiscoverTab({super.key});
+
+  @override
+  State<DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends State<DiscoverTab> {
+  @override
+  void initState() {
+    super.initState();
+    // 🏆 SỬA LỖI CHÍ MẠNG: Bọc hàm load truyện trong addPostFrameCallback 
+    // để đưa lệnh ra ngoài chu kỳ build, triệt tiêu hoàn toàn lỗi sập giao diện ở Ảnh 2.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<NovelProvider>().loadNovels();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +34,41 @@ class DiscoverTab extends StatelessWidget {
       body: SafeArea(
         child: Consumer<NovelProvider>(
           builder: (context, provider, _) {
+            // Nếu đang tải và danh sách truyện trống thì hiện vòng xoay loading
             if (provider.isLoading && provider.allNovels.isEmpty) {
-              return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+              return const Center(
+                child: CircularProgressIndicator(color: AppTheme.primary),
+              );
             }
 
-            final novels = provider.allNovels;
+            // Trường hợp danh sách trống do bộ lọc hoặc lỗi nạp dữ liệu
+            if (provider.allNovels.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.menu_book_rounded, size: 48, color: AppTheme.textHint),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Không tìm thấy truyện nào',
+                      style: GoogleFonts.nunito(color: AppTheme.textSecondary, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: () => provider.loadNovels(),
+                      child: const Text('Tải lại'),
+                    )
+                  ],
+                ),
+              );
+            }
 
+            // 🏆 ĐÃ SỬA: Hiển thị danh sách truyện mượt mà chuẩn xác
             return RefreshIndicator(
               color: AppTheme.primary,
-              onRefresh: provider.loadNovels,
+              onRefresh: () async {
+                await provider.loadNovels();
+              },
               child: CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(
@@ -67,7 +110,8 @@ class DiscoverTab extends StatelessWidget {
                       ),
                       delegate: SliverChildBuilderDelegate(
                         (context, i) {
-                          final novel = provider.novels[i];
+                          // Sử dụng danh sách allNovels thô giống màn hình tìm kiếm để hiển thị tuyệt đối chính xác
+                          final novel = provider.allNovels[i];
                           return NovelCard(
                             novel: novel,
                             onTap: () => Navigator.push(
@@ -78,7 +122,7 @@ class DiscoverTab extends StatelessWidget {
                             ),
                           );
                         },
-                        childCount: provider.novels.length,
+                        childCount: provider.allNovels.length,
                       ),
                     ),
                   ),

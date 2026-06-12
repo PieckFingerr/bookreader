@@ -27,11 +27,15 @@ class UserModel {
 
   factory UserModel.fromMap(Map<String, dynamic> map) => UserModel(
         id: map['id'],
-        username: map['username'],
-        email: map['email'],
-        passwordHash: map['password_hash'],
-        isAdmin: map['is_admin'] == 1,
-        createdAt: DateTime.parse(map['created_at']),
+        username: map['username'] ?? '',
+        email: map['email'] ?? '',
+        // 🏆 ĐÃ SỬA: Nếu map['password_hash'] bị null thì mặc định gán chuỗi rỗng "" để triệt tiêu lỗi cast type 'Null'
+        passwordHash: map['password_hash'] ?? '',
+        // 💡 ĐÃ SỬA: Hỗ trợ kiểm tra linh hoạt cả kiểu số 1/0 từ SQL Server hoặc kiểu bool trực tiếp
+        isAdmin: map['is_admin'] == 1 || map['is_admin'] == true,
+        createdAt: map['created_at'] != null 
+            ? DateTime.parse(map['created_at']) 
+            : DateTime.now(),
       );
 
   UserModel copyWith({

@@ -26,12 +26,15 @@ class ChapterModel {
       };
 
   factory ChapterModel.fromMap(Map<String, dynamic> map) => ChapterModel(
-        id: map['id'],
-        novelId: map['novel_id'],
-        chapterNumber: map['chapter_number'],
-        title: map['title'],
-        content: map['content'],
-        createdAt: DateTime.parse(map['created_at']),
+        id: map['id'] as int?,
+        // 🏆 ĐÃ SỬA: Đọc chính xác key 'novel_id' và 'chapter_number' định dạng snake_case từ Web API Node.js trả về
+        novelId: map['novel_id'] ?? map['novelId'] ?? 0,
+        chapterNumber: map['chapter_number'] ?? map['chapterNumber'] ?? 1,
+        title: map['title']?.toString() ?? '',
+        content: map['content']?.toString() ?? '',
+        createdAt: map['created_at'] != null 
+            ? DateTime.parse(map['created_at'].toString()) 
+            : DateTime.now(),
       );
 
   ChapterModel copyWith({
