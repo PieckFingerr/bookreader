@@ -7,6 +7,11 @@ class BookmarkModel {
   final int? lastChapterNumber;
   final DateTime updatedAt;
 
+  // Fields từ JOIN với bảng novels (chỉ có khi gọi GET /bookmarks/:userId)
+  final String? novelTitle;
+  final String? novelCover;
+  final String? novelAuthor;
+
   BookmarkModel({
     this.id,
     required this.userId,
@@ -14,6 +19,9 @@ class BookmarkModel {
     this.lastChapterId,
     this.lastChapterNumber,
     required this.updatedAt,
+    this.novelTitle,
+    this.novelCover,
+    this.novelAuthor,
   });
 
   Map<String, dynamic> toMap() => {
@@ -31,7 +39,13 @@ class BookmarkModel {
         novelId: map['novel_id'],
         lastChapterId: map['last_chapter_id'],
         lastChapterNumber: map['last_chapter_number'],
-        updatedAt: DateTime.parse(map['updated_at']),
+        updatedAt: map['updated_at'] != null
+            ? DateTime.parse(map['updated_at'].toString())
+            : DateTime.now(),
+        // Các field JOIN từ API bookmark
+        novelTitle: map['novel_title']?.toString(),
+        novelCover: map['novel_cover']?.toString(),
+        novelAuthor: map['novel_author']?.toString(),
       );
 
   BookmarkModel copyWith({
@@ -41,6 +55,9 @@ class BookmarkModel {
     int? lastChapterId,
     int? lastChapterNumber,
     DateTime? updatedAt,
+    String? novelTitle,
+    String? novelCover,
+    String? novelAuthor,
   }) =>
       BookmarkModel(
         id: id ?? this.id,
@@ -49,5 +66,8 @@ class BookmarkModel {
         lastChapterId: lastChapterId ?? this.lastChapterId,
         lastChapterNumber: lastChapterNumber ?? this.lastChapterNumber,
         updatedAt: updatedAt ?? this.updatedAt,
+        novelTitle: novelTitle ?? this.novelTitle,
+        novelCover: novelCover ?? this.novelCover,
+        novelAuthor: novelAuthor ?? this.novelAuthor,
       );
 }

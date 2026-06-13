@@ -8,7 +8,7 @@ import '../../utils/app_theme.dart';
 
 class AddNovelScreen extends StatefulWidget {
   final int userId;
-  final NovelModel? novel; // Nếu truyền tham số novel -> Tự động chuyển sang chế độ SỬA TRUYỆN
+  final NovelModel? novel;
 
   const AddNovelScreen({super.key, required this.userId, this.novel});
 
@@ -21,10 +21,10 @@ class _AddNovelScreenState extends State<AddNovelScreen> {
   late TextEditingController _titleCtrl;
   late TextEditingController _descCtrl;
   late TextEditingController _coverCtrl;
-  
+
   late String _selectedStatus;
   final List<String> _genres = [];
-  final List<String> _availableGenres = ['Tập Kích', 'Tiên Hiệp', 'Huyền Huyễn', 'Đô Thị', 'Khoa Huyễn', 'Kiếm Hiệp'];
+  // ✅ Không còn _availableGenres hardcode nữa, dùng kAllGenres từ app_theme.dart
 
   bool get isEditMode => widget.novel != null;
 
@@ -54,10 +54,10 @@ class _AddNovelScreenState extends State<AddNovelScreen> {
     final novelData = NovelModel(
       id: isEditMode ? widget.novel!.id : null,
       title: _titleCtrl.text.trim(),
-      author: isEditMode ? widget.novel!.author : 'Hệ thống tự điền', 
+      author: isEditMode ? widget.novel!.author : 'Hệ thống tự điền',
       description: _descCtrl.text.trim(),
       coverUrl: _coverCtrl.text.trim(),
-      genres: _genres.isEmpty ? ['Truyện Chữ'] : _genres,
+      genres: _genres.isEmpty ? ['Fantasy'] : _genres,
       status: _selectedStatus,
       createdAt: isEditMode ? widget.novel!.createdAt : DateTime.now(),
       updatedAt: DateTime.now(),
@@ -131,6 +131,8 @@ class _AddNovelScreenState extends State<AddNovelScreen> {
                       items: const [
                         DropdownMenuItem(value: 'ongoing', child: Text('Đang tiến hành (Ongoing)')),
                         DropdownMenuItem(value: 'completed', child: Text('Hoàn thành (Completed)')),
+                        // ✅ Thêm Tạm dừng để đồng bộ với SearchScreen
+                        DropdownMenuItem(value: 'hiatus', child: Text('Tạm dừng (Hiatus)')),
                       ],
                       onChanged: (v) => setState(() => _selectedStatus = v ?? 'ongoing'),
                     ),
@@ -138,7 +140,9 @@ class _AddNovelScreenState extends State<AddNovelScreen> {
                     Text('Chọn Thể loại truyện:', style: GoogleFonts.nunito(fontWeight: FontWeight.bold)),
                     Wrap(
                       spacing: 8,
-                      children: _availableGenres.map((g) {
+                      runSpacing: 4,
+                      // ✅ Dùng kAllGenres thay vì _availableGenres hardcode
+                      children: kAllGenres.map((g) {
                         final isSelected = _genres.contains(g);
                         return FilterChip(
                           label: Text(g),

@@ -46,28 +46,26 @@ class BookmarkProvider extends ChangeNotifier {
 
   Future<void> loadBookmarks(int userId) async {
     _isLoading = true;
-    // Đã bọc ngầm định cấu trúc bất đồng bộ
+    notifyListeners();
     try {
-      // 💡 ĐÃ SỬA: Lấy dữ liệu qua API từ SQL Server trả về dạng mảng dữ liệu JOIN bảng
       final list = await _db.getBookmarks(userId);
       _bookmarks = list.map((b) {
-        // Khớp cấu trúc Map từ API trả về có chứa thông tin novel_title, novel_cover
         return BookmarkItem(
           bookmarkId: b.id ?? 0,
           novelId: b.novelId,
-          title: (b as dynamic).novelTitle ?? 'Truyện chữ',
-          author: (b as dynamic).novelAuthor ?? '',
-          coverUrl: (b as dynamic).novelCover ?? '',
+          // Dùng trực tiếp field đã map đúng trong BookmarkModel
+          title: b.novelTitle ?? 'Truyện chữ',
+          author: b.novelAuthor ?? '',
+          coverUrl: b.novelCover ?? '',
           status: 'ongoing',
           genres: [],
           lastChapterNumber: b.lastChapterNumber,
           updatedAt: b.updatedAt,
         );
       }).toList();
-
       _bookmarkedNovelIds = _bookmarks.map((b) => b.novelId).toSet();
     } catch (e) {
-      // Xử lý câm lặng ngoại lệ mạng
+      debugPrint('Lỗi load bookmarks: $e');
     }
     _isLoading = false;
     notifyListeners();
@@ -78,19 +76,17 @@ class BookmarkProvider extends ChangeNotifier {
       await _db.deleteBookmark(userId, novelId);
       _bookmarkedNovelIds.remove(novelId);
       _bookmarks.removeWhere((b) => b.novelId == novelId);
+      notifyListeners();
     } else {
-      // 💡 ĐÃ SỬA: Khởi tạo thực thể BookmarkModel đúng tham số để đẩy lên Server Node.js
       final newBookmark = BookmarkModel(
         userId: userId,
         novelId: novelId,
         updatedAt: DateTime.now(),
       );
       await _db.insertOrUpdateBookmark(newBookmark);
-      _bookmarkedNovelIds.add(novelId);
+      // Load lại để lấy đầy đủ thông tin novel từ JOIN
       await loadBookmarks(userId);
-      return;
     }
-    notifyListeners();
   }
 
   Future<void> updateReadingProgress({
@@ -99,7 +95,6 @@ class BookmarkProvider extends ChangeNotifier {
     required int chapterId,
     required int chapterNumber,
   }) async {
-    // 💡 ĐÃ SỬA: Cập nhật dấu trang tiến trình đọc lên Server SQL Server
     final progressBookmark = BookmarkModel(
       userId: userId,
       novelId: novelId,
